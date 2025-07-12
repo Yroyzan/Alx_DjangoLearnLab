@@ -1,9 +1,5 @@
+from bookshelf.models import Book
 
----
-
-#### 🟥 `delete.md`
-```markdown
-```python
 updated_book.delete()
 # Output: (1, {'bookshelf.Book': 1})
 
