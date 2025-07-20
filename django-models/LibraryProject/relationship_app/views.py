@@ -9,11 +9,10 @@ from django.contrib.auth.decorators import permission_required
 from django.shortcuts import get_object_or_404
 from .forms import BookForm
 
-
-
+# FIXED: Changed template name to match task requirements
 def list_books(request):
     books = Book.objects.all()
-    return render(request, 'relationship_app/book_list.html', {'books': books})
+    return render(request, 'relationship_app/list_books.html', {'books': books})
 
 class LibraryDetailView(DetailView):
     model = Library
@@ -57,7 +56,6 @@ def librarian_view(request):
 def member_view(request):
     return render(request, 'relationship_app/member_view.html')
 
-
 @permission_required('relationship_app.can_add_book', raise_exception=True)
 def add_book(request):
     if request.method == 'POST':
@@ -88,4 +86,3 @@ def delete_book(request, pk):
         book.delete()
         return redirect('list_books')
     return render(request, 'relationship_app/book_confirm_delete.html', {'book': book})
-

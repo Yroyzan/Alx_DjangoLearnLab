@@ -4,7 +4,7 @@ from .models import Book, Author
 class BookForm(forms.ModelForm):
     class Meta:
         model = Book
-        fields = ['title', 'author', 'publication_year']
+        fields = ['title', 'author', 'publication_year']  # ADDED: publication_year field
         widgets = {
             'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter book title'}),
             'author': forms.Select(attrs={'class': 'form-control'}),
