@@ -1,9 +1,8 @@
 from django.urls import path
 from .views import (
-    PostListView, PostDetailView, PostCreateView, 
-    PostUpdateView, PostDeleteView
+    PostListView, PostDetailView, PostCreateView,
+    PostUpdateView, PostDeleteView, search_posts, PostByTagListView
 )
-from .views import search_posts  # Separate import for the search feature
 
 urlpatterns = [
     path('', PostListView.as_view(), name='blog-home'),
@@ -12,4 +11,5 @@ urlpatterns = [
     path('post/<int:pk>/update/', PostUpdateView.as_view(), name='post-update'),
     path('post/<int:pk>/delete/', PostDeleteView.as_view(), name='post-delete'),
     path('search/', search_posts, name='post-search'),
+    path('tags/<slug:tag_slug>/', PostByTagListView.as_view(), name='posts-by-tag'),
 ]
