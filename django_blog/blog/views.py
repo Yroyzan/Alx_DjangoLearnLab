@@ -17,7 +17,7 @@ class PostDetailView(DetailView):
 
 class PostCreateView(LoginRequiredMixin, CreateView):
     model = Post
-    fields = ['title', 'content']
+    fields = ['title', 'content', 'tags']  # make sure tags field is in your model
 
     def form_valid(self, form):
         form.instance.author = self.request.user
@@ -26,7 +26,7 @@ class PostCreateView(LoginRequiredMixin, CreateView):
 
 class PostUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     model = Post
-    fields = ['title', 'content']
+    fields = ['title', 'content', 'tags']
 
     def form_valid(self, form):
         form.instance.author = self.request.user
@@ -52,11 +52,17 @@ def search_posts(request):
     query = request.GET.get('q')
     results = []
     if query:
-        results = Post.objects.filter(
-            title__icontains=query
-        ) | Post.objects.filter(
-            content__icontains=query
-        ) | Post.objects.filter(
-            tags__name__icontains=query
-        )
+        results = Post.objects.filter(title__icontains=query) | \
+                  Post.objects.filter(content__icontains=query) | \
+                  Post.objects.filter(tags__name__icontains=query)
     return render(request, 'blog/search_results.html', {'results': results, 'query': query})
+
+
+# ---------- Posts by Tag ----------
+class PostByTagListView(ListView):
+    model = Post
+    template_name = 'blog/posts_by_tag.html'
+    context_object_name = 'posts'
+
+    def get_queryset(self):
+        return Post.objects.filter(tags__slug=self.kwargs.get('tag_slug'))
