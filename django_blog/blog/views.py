@@ -3,12 +3,10 @@ from django.views.generic import ListView, DetailView, CreateView, UpdateView, D
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.decorators import login_required
 from .models import Post
-from django.db.models import Q
-
 
 class PostListView(ListView):
     model = Post
-    template_name = 'blog/home.html'  # Your template
+    template_name = 'blog/home.html'
     context_object_name = 'posts'
     ordering = ['-date_posted']
 
@@ -48,14 +46,17 @@ class PostDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
         return self.request.user == post.author
 
 
-# Search functionality
+# ---------- Search Functionality ----------
+@login_required
 def search_posts(request):
     query = request.GET.get('q')
-    posts = Post.objects.all()
+    results = []
     if query:
-        posts = posts.filter(
-            Q(title__icontains=query) |
-            Q(tags__name__icontains=query) |
-            Q(content__icontains=query)
+        results = Post.objects.filter(
+            title__icontains=query
+        ) | Post.objects.filter(
+            content__icontains=query
+        ) | Post.objects.filter(
+            tags__name__icontains=query
         )
-    return render(request, 'blog/search_results.html', {'posts': posts})
+    return render(request, 'blog/search_results.html', {'results': results, 'query': query})
