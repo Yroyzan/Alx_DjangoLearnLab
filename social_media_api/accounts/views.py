@@ -1,36 +1,39 @@
-from rest_framework import permissions.IsAuthenticated
-from rest_framework import status, generics.GenericAPIView
+from rest_framework import status, generics
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from .serializers import UserSerializer, UserLoginSerializer, TokenSerializer
-
-from .models import CustomUser
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from django.contrib.auth import authenticate, get_user_model
 from rest_framework.authtoken.models import Token
 
-class UserRegistrationView(APIView):
-    permission_classes = [AllowAny]
-    def post(self, request):
-        serializer = UserSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            user = CustomUser.objects.get(username=serializer.data['username'])
-            token = Token.objects.get(user=user)
-            return Response({'token': token.key}, status=status.HTTP_201_CREATED)
+from .serializers import RegisterSerializer, UserSerializer
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+User = get_user_model()
+
+
+class UserRegistrationView(generics.CreateAPIView):
+    serializer_class = RegisterSerializer
+    permission_classes = [AllowAny]
+
 
 class UserLoginView(APIView):
     permission_classes = [AllowAny]
+
     def post(self, request):
-        serializer = UserLoginSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.validated_data['user']
+        username = request.data.get("username")
+        password = request.data.get("password")
+        user = authenticate(username=username, password=password)
+
+        if user:
             token, created = Token.objects.get_or_create(user=user)
-            return Response({'token': token.key}, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                "token": token.key,
+                "user": UserSerializer(user).data
+            }, status=status.HTTP_200_OK)
+
+        return Response({"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST)
+
 
 class UserProfileView(generics.RetrieveUpdateAPIView):
-    queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
 

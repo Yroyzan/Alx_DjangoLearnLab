@@ -1,27 +1,28 @@
 from rest_framework import serializers
-from .models import Post, Comment
-from accounts.serializers import UserSerializer  
+from django.contrib.auth import get_user_model
+from rest_framework.authtoken.models import Token
 
-class PostSerializer(serializers.ModelSerializer):
-    author = UserSerializer(read_only=True)  
+User = get_user_model()
+
+# For general user representation (used in posts, comments, etc.)
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'bio', 'profile_picture']
+
+
+# For registration
+class RegisterSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True)
+    token = serializers.CharField(read_only=True)
 
     class Meta:
-        model = Post
-        fields = ('id', 'author', 'title', 'content', 'created_at', 'updated_at')
-        read_only_fields = ('created_at', 'updated_at', 'author')
+        model = User
+        fields = ['id', 'username', 'email', 'password', 'bio', 'profile_picture', 'token']
 
     def create(self, validated_data):
-        validated_data['author'] = self.context['request'].user
-        return super().create(validated_data)
-
-class CommentSerializer(serializers.ModelSerializer):
-    author = UserSerializer(read_only=True)  
-
-    class Meta:
-        model = Comment
-        fields = ('id', 'post', 'author', 'content', 'created_at', 'updated_at')
-        read_only_fields = ('created_at', 'updated_at', 'author')
-
-    def create(self, validated_data):
-        validated_data['author'] = self.context['request'].user
-        return super().create(validated_data)
+        password = validated_data.pop('password')
+        user = User.objects.create_user(password=password, **validated_data)  # must use create_user
+        token = Token.objects.create(user=user)  # must create token
+        user.token = token.key
+        return user
