@@ -1,75 +1,45 @@
 from rest_framework import serializers
-from django.contrib.auth import get_user_model
+from django.contrib.auth import authenticate
 from rest_framework.authtoken.models import Token
-
-User = get_user_model()
-
-class UserMiniSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ("id", "username", "profile_picture")
+from django.contrib.auth import get_user_model
+from accounts.models import CustomUser
 
 
+
+# Serializer for User model
+# This serializer is used to convert User model instances into JSON format and vice versa.
 class UserSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True)
-
     class Meta:
-        model = User
-        fields = ("id", "username", "email", "password", "bio", "profile_picture", "followers")
-        read_only_fields = ("followers",)
-
-    def create(self, validated_data):
-        user = get_user_model().objects.create_user(
-            username=validated_data.get("username"),
-            email=validated_data.get("email"),
-            password=validated_data.get("password"),
-            bio=validated_data.get("bio", ""),
-            profile_picture=validated_data.get("profile_picture", None),
-        )
-        Token.objects.create(user=user)
-        return user
+        model = get_user_model()
+        fields = ['id', 'username', 'email', 'bio', 'profile_picture', 'followers']
 
 
+# Serializer for user registration
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
 
     class Meta:
-        model = User
-        fields = ("id", "username", "email", "password", "bio", "profile_picture")
+        model = get_user_model()
+        fields = ['username', 'email', 'password']
 
     def create(self, validated_data):
         user = get_user_model().objects.create_user(
-            username=validated_data.get("username"),
-            email=validated_data.get("email"),
-            password=validated_data.get("password"),
-            bio=validated_data.get("bio", ""),
-            profile_picture=validated_data.get("profile_picture", None),
+            username=validated_data['username'],
+            email=validated_data.get('email'),
+            password=validated_data['password']
         )
         Token.objects.create(user=user)
         return user
 
 
-class UserLoginSerializer(serializers.Serializer):
+# Serializer for user login
+class LoginSerializer(serializers.Serializer):
     username = serializers.CharField()
     password = serializers.CharField(write_only=True)
 
     def validate(self, data):
-        from django.contrib.auth import authenticate
-        username = data.get("username")
-        password = data.get("password")
-
-        if username and password:
-            user = authenticate(username=username, password=password)
-            if user:
-                if not user.is_active:
-                    raise serializers.ValidationError("User account is disabled.")
-                data["user"] = user
-            else:
-                raise serializers.ValidationError("Invalid credentials.")
-        else:
-            raise serializers.ValidationError("Must include username and password.")
-        return data
-
-
-class TokenSerializer(serializers.Serializer):
-    token = serializers.CharField()
+        user = authenticate(**data)
+        if user:
+            token, created = Token.objects.get_or_create(user=user)
+            return {"user": user.username, "token": token.key}
+        raise serializers.ValidationError("Invalid credentials")

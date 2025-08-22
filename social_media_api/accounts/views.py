@@ -1,52 +1,41 @@
-from rest_framework import status, generics, permissions
+from django.shortcuts import render
+from rest_framework import generics, viewsets, permissions, status
 from rest_framework.response import Response
-from rest_framework.views import APIView
-from django.contrib.auth import authenticate, get_user_model
 from rest_framework.authtoken.models import Token
-from django.shortcuts import get_object_or_404
-
-from .serializers import RegisterSerializer, UserSerializer, UserMiniSerializer
-from .models import CustomUser  # ✅ needed for checker substring match
-
-User = get_user_model()
+from .serializers import RegisterSerializer, LoginSerializer, UserSerializer
+from rest_framework.decorators import action
+from .models import CustomUser
 
 
-class UserRegistrationView(generics.CreateAPIView):
+# User registration view
+# This view allows users to register by providing a username, email, and password.
+class RegisterView(generics.CreateAPIView):
+    queryset = CustomUser.objects.all()
     serializer_class = RegisterSerializer
     permission_classes = [permissions.AllowAny]
 
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.save()
+        response = super().create(request, *args, **kwargs)
+        user = CustomUser.objects.get(username=response.data['username'])
         token = Token.objects.get(user=user)
-        headers = self.get_success_headers(serializer.data)
-        return Response(
-            {"token": token.key, "user": UserSerializer(user).data},
-            status=status.HTTP_201_CREATED,
-            headers=headers,
-        )
+        return Response({"user": response.data, "token": token.key})
 
 
-class UserLoginView(APIView):
+# User login view
+# This view allows users to log in by providing their username and password.
+class LoginView(generics.GenericAPIView):
+    serializer_class = LoginSerializer
     permission_classes = [permissions.AllowAny]
 
-    def post(self, request):
-        username = request.data.get("username")
-        password = request.data.get("password")
-        user = authenticate(username=username, password=password)
-
-        if user:
-            token, created = Token.objects.get_or_create(user=user)
-            return Response({
-                "token": token.key,
-                "user": UserSerializer(user).data
-            }, status=status.HTTP_200_OK)
-
-        return Response({"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST)
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return Response(serializer.validated_data)
 
 
-class UserProfileView(generics.RetrieveUpdateAPIView):
+# User profile view
+# This view allows users to view and update their profile information.
+class ProfileView(generics.RetrieveUpdateAPIView):
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -54,40 +43,21 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
         return self.request.user
 
 
-# ✅ Follow / Unfollow (meets checker substrings)
-class FollowUserView(generics.GenericAPIView):
+
+# for handling follows
+class UserViewSet(viewsets.ModelViewSet):
+    queryset = CustomUser.objects.all()
+    serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
-    queryset = CustomUser.objects.all()  # <-- checker looks for this exact string
-    serializer_class = UserMiniSerializer
 
-    def post(self, request, user_id):
-        me = request.user
-        target = get_object_or_404(CustomUser, pk=user_id)
+    @action(detail=True, methods=['post'])
+    def follow(self, request, pk=None):
+        user_to_follow = self.get_object()
+        request.user.following.add(user_to_follow)
+        return Response({"message": f"You are now following {user_to_follow.username}"}, status=status.HTTP_200_OK)
 
-        if me.pk == target.pk:
-            return Response({"detail": "You cannot follow yourself."}, status=status.HTTP_400_BAD_REQUEST)
-
-        me.following.add(target)
-        return Response({
-            "detail": f"Now following {target.username}",
-            "me": self.get_serializer(me).data,
-        }, status=status.HTTP_200_OK)
-
-
-class UnfollowUserView(generics.GenericAPIView):
-    permission_classes = [permissions.IsAuthenticated]
-    queryset = CustomUser.objects.all()  # <-- checker looks for this exact string
-    serializer_class = UserMiniSerializer
-
-    def post(self, request, user_id):
-        me = request.user
-        target = get_object_or_404(CustomUser, pk=user_id)
-
-        if me.pk == target.pk:
-            return Response({"detail": "You cannot unfollow yourself."}, status=status.HTTP_400_BAD_REQUEST)
-
-        me.following.remove(target)
-        return Response({
-            "detail": f"Unfollowed {target.username}",
-            "me": self.get_serializer(me).data,
-        }, status=status.HTTP_200_OK)
+    @action(detail=True, methods=['post'])
+    def unfollow(self, request, pk=None):
+        user_to_unfollow = self.get_object()
+        request.user.following.remove(user_to_unfollow)
+        return Response({"message": f"You unfollowed {user_to_unfollow.username}"}, status=status.HTTP_200_OK)
