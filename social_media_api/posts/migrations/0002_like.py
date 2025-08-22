@@ -7,16 +7,14 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-    initial = True
-
     dependencies = [
-        ("contenttypes", "0002_remove_content_type_name"),
+        ("posts", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.CreateModel(
-            name="Notification",
+            name="Like",
             fields=[
                 (
                     "id",
@@ -27,41 +25,25 @@ class Migration(migrations.Migration):
                         verbose_name="ID",
                     ),
                 ),
-                ("verb", models.CharField(max_length=255)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
                 (
-                    "target_object_id",
-                    models.PositiveIntegerField(blank=True, null=True),
-                ),
-                ("timestamp", models.DateTimeField(auto_now_add=True)),
-                ("read", models.BooleanField(default=False)),
-                (
-                    "actor",
+                    "post",
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
-                        related_name="actor",
-                        to=settings.AUTH_USER_MODEL,
+                        related_name="likes",
+                        to="posts.post",
                     ),
                 ),
                 (
-                    "recipient",
+                    "user",
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
-                        related_name="notifications",
                         to=settings.AUTH_USER_MODEL,
-                    ),
-                ),
-                (
-                    "target_content_type",
-                    models.ForeignKey(
-                        blank=True,
-                        null=True,
-                        on_delete=django.db.models.deletion.CASCADE,
-                        to="contenttypes.contenttype",
                     ),
                 ),
             ],
             options={
-                "ordering": ["-timestamp"],
+                "unique_together": {("user", "post")},
             },
         ),
     ]

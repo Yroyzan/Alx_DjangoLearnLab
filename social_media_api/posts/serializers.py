@@ -1,32 +1,17 @@
 from rest_framework import serializers
-from .models import Post, Comment, Like
+from .models import Post, Comment
 
-
-# Serializer for Comment model
-# Serializers convert Django model objects into JSON (for API responses) and back into Python objects (for requests)
-class CommentSerializer(serializers.ModelSerializer):
-    author = serializers.StringRelatedField(read_only=True)
-
-    class Meta:
-        model = Comment
-        fields = ['id', 'post', 'author', 'content', 'created_at', 'updated_at']
-        read_only_fields = ['author', 'created_at', 'updated_at']
-
-
+# Serializer for the Post model
 class PostSerializer(serializers.ModelSerializer):
-    author = serializers.StringRelatedField(read_only=True) # Display username instead of user ID
-    comments = CommentSerializer(many=True, read_only=True) # Nested serializer to include comments in the post response
-
+    author = serializers.ReadOnlyField(source='author.username')
     class Meta:
         model = Post
-        fields = ['id', 'author', 'title', 'content', 'created_at', 'updated_at', 'comments']
-        read_only_fields = ['author', 'created_at', 'updated_at']
+        fields = ['id', 'author', 'title', 'content', 'created_at', 'updated_at']  # Fields to include
 
-
-# Serializer for Like model
-# It allows users to like posts and prevents duplicate likes.
-class LikeSerializer(serializers.ModelSerializer):
+# Serializer for the Comment model
+class CommentSerializer(serializers.ModelSerializer):
+    author = serializers.ReadOnlyField(source='author.username')
+    post = serializers.ReadOnlyField(source='post.id')
     class Meta:
-        model = Like
-        fields = ['id', 'user', 'post', 'created_at']
-        read_only_fields = ['user', 'created_at']
+        model = Comment
+        fields = ['id', 'post', 'author', 'content', 'created_at', 'updated_at']  # Fields to include

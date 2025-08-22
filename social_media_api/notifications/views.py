@@ -1,11 +1,28 @@
-from django.shortcuts import render
-from rest_framework import generics, permissions
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 from .models import Notification
-from .serializers import NotificationSerializer
+from rest_framework import generics, status
 
+# View to get the notifications for the authenticated user
 class NotificationListView(generics.ListAPIView):
-    serializer_class = NotificationSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticated]  # Only authenticated users can see their notifications
 
-    def get_queryset(self):
-        return self.request.user.notifications.all()
+    def get(self, request):
+        # Get all notifications for the current user
+        notifications = Notification.objects.filter(recipient=request.user)
+
+        # Mark all notifications as read
+        notifications.update(read=True)
+
+        # Return a list of notifications
+        notifications_data = [
+            {
+                'actor': notification.actor.username,
+                'verb': notification.verb,
+                'target': str(notification.target),
+                'timestamp': notification.timestamp,
+                'read': notification.read
+            }
+            for notification in notifications
+        ]
+        return Response(notifications_data, status=status.HTTP_200_OK)

@@ -1,31 +1,36 @@
+# notifications/models.py
 from django.db import models
-from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 
+# Get the user model
+User = get_user_model()
+
 class Notification(models.Model):
-    recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="notifications")
-    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="actor_notifications")
-    verb = models.CharField(max_length=255)  # e.g., "liked", "commented", "followed"
+    # The recipient of the notification
+    recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
     
-    # generic relation to  to allow the notification to reference any model (like a post, comment, etc.)
-    # This allows notifications to be flexible and not tied to a specific model.
-    # For example, a notification can be for a post or a comment.
+    # The actor (the user who triggered the notification)
+    actor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='actor')
+    
+    # Verb describing the action (e.g., "liked", "followed")
+    verb = models.CharField(max_length=255)
+    
+    # The target object (could be a post, comment, or other objects)
     target_content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True, blank=True)
     target_object_id = models.PositiveIntegerField(null=True, blank=True)
-    target = GenericForeignKey("target_content_type", "target_object_id")
-
+    target = GenericForeignKey('target_content_type', 'target_object_id')
+    
+    # Timestamp for when the notification was created
     timestamp = models.DateTimeField(auto_now_add=True)
+    
+    # Whether the notification has been read
     read = models.BooleanField(default=False)
 
-    class Meta:
-        ordering = ['-timestamp']
-
     def __str__(self):
-        return f"{self.actor} {self.verb} {self.target}"
+        return f'Notification for {self.recipient.username}: {self.verb} by {self.actor.username}'
 
-
-# DOCUMENTATION
-# This model lets you create flexible notifications for any kind of activity (like, comment, follow) 
-# and link them to any object in your app (post, comment, etc.), while tracking who did the action, 
-# who received it, and whether it’s been read.
+    class Meta:
+        # Ensure notifications are ordered by timestamp
+        ordering = ['-timestamp']
